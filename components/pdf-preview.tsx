@@ -262,7 +262,7 @@ export default function PDFPreview({ photos, layoutSettings }: PDFPreviewProps) 
       }
 
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-")
-      pdf.save(`passport-photos-${timestamp}.pdf`)
+      pdf.save(`Sheba-Studio-${timestamp}.pdf`)
     } catch (error) {
       console.error("Error generating PDF:", error)
       alert("Error generating PDF. Please try again.")

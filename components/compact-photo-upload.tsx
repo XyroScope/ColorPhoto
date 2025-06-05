@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Upload, Link, Clipboard, ImageIcon, Camera, Zap, Shield, Sparkles } from "lucide-react"
@@ -115,33 +115,67 @@ export default function CompactPhotoUpload({ onPhotosUploaded }: CompactPhotoUpl
 
   const handlePasteFromClipboard = useCallback(async () => {
     try {
-      if (!navigator.clipboard || !navigator.clipboard.read) {
-        alert("Clipboard not supported")
+      // Check if clipboard API is available
+      if (!navigator.clipboard) {
+        alert("Clipboard access is not available in your browser")
         return
       }
 
-      const clipboardItems = await navigator.clipboard.read()
-      let imageFound = false
+      // Try to read from clipboard with better error handling
+      try {
+        const clipboardItems = await navigator.clipboard.read()
+        let imageFound = false
 
-      for (const clipboardItem of clipboardItems) {
-        for (const type of clipboardItem.types) {
-          if (type.startsWith("image/")) {
-            const blob = await clipboardItem.getType(type)
-            const file = new File([blob], "pasted-image", { type })
-            await processFiles([file])
-            imageFound = true
-            break
+        for (const clipboardItem of clipboardItems) {
+          for (const type of clipboardItem.types) {
+            if (type.startsWith("image/")) {
+              const blob = await clipboardItem.getType(type)
+              const file = new File([blob], "pasted-image", { type })
+              await processFiles([file])
+              imageFound = true
+              break
+            }
           }
+          if (imageFound) break
         }
-        if (imageFound) break
-      }
 
-      if (!imageFound) {
-        alert("No image in clipboard")
+        if (!imageFound) {
+          alert("No image found in clipboard. Please copy an image first.")
+        }
+      } catch (clipboardError) {
+        console.log("Clipboard read access denied:", clipboardError)
+
+        // Fallback to paste event for environments where direct clipboard access is restricted
+        alert(
+          "Direct clipboard access is restricted. Please use Ctrl+V/Cmd+V on the page or try uploading the image directly.",
+        )
       }
     } catch (error) {
       console.error("Clipboard error:", error)
-      alert("Clipboard access failed")
+    }
+  }, [processFiles])
+
+  // Add document-wide paste event listener as fallback
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      if (e.clipboardData && e.clipboardData.items) {
+        const items = e.clipboardData.items
+
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf("image") !== -1) {
+            const blob = items[i].getAsFile()
+            if (blob) {
+              await processFiles([blob])
+              break
+            }
+          }
+        }
+      }
+    }
+
+    document.addEventListener("paste", handlePaste)
+    return () => {
+      document.removeEventListener("paste", handlePaste)
     }
   }, [processFiles])
 
